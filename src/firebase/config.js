@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
 import { getFirestore } from 'firebase/firestore';
+import { getMessaging } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDWlH9BJSy0vLDxSt3OX8FpS7mck_KOx7A",
@@ -19,5 +20,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const rtdb = getDatabase(app); // Realtime Database को जोड़ें
+const messaging = getMessaging(app);
 
-export { auth, db, rtdb }; // rtdb को एक्सपोर्ट करें
+export { auth, db, rtdb, messaging }; // rtdb को एक्सपोर्ट करें
