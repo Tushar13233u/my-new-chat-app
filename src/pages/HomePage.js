@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase/config';
-import { Box, Typography, List, ListItem, ListItemText, Avatar, AppBar, Toolbar, IconButton } from '@mui/material';
+import { Box, Typography, List, ListItem, ListItemText, Avatar, AppBar, Toolbar, IconButton, Fab } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
-import { Logout } from '@mui/icons-material';
+import { Logout, SmartToy } from '@mui/icons-material';
 
 function HomePage() {
   const [users, setUsers] = useState([]); // all users
@@ -62,12 +62,15 @@ function HomePage() {
       </AppBar>
       <List>
         {users.map((user) => (
-          <ListItem button key={user.id} onClick={() => handleUserClick(user)}>
+          <ListItem button="true" key={user.id} onClick={() => handleUserClick(user)}>
             <Avatar src={user.photoURL} sx={{ mr: 2 }} />
             <ListItemText primary={user.displayName} />
           </ListItem>
         ))}
       </List>
+      <Fab color="primary" aria-label="add" sx={{ position: 'absolute', bottom: 16, right: 16 }} onClick={() => navigate('/gemini-chat')}>
+        <SmartToy />
+      </Fab>
     </Box>
   );
 }

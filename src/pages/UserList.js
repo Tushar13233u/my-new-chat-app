@@ -50,7 +50,7 @@ function UserList() {
       </AppBar>
       <List>
         {users.map((user) => (
-          <ListItem button key={user.id} onClick={() => handleUserClick(user)}>
+          <ListItem button="true" key={user.id} onClick={() => handleUserClick(user)}>
             <Avatar src={user.photoURL} sx={{ mr: 2 }} />
             <ListItemText primary={user.displayName} />
           </ListItem>

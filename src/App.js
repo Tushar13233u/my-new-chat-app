@@ -12,6 +12,7 @@ import PrivateChatRoom from './pages/PrivateChatRoom';
 import Profile from './pages/Profile';
 import HomePage from './pages/HomePage';
 import UserList from './pages/UserList';
+import GeminiChatRoom from './pages/GeminiChatRoom';
 
 const lightTheme = createTheme({
   palette: {
@@ -260,6 +261,10 @@ function App() {
           <Route 
             path="/chat/:userId" 
             element={user ? <PrivateChatRoom user={user} /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/gemini-chat" 
+            element={user ? <GeminiChatRoom /> : <Navigate to="/login" />} 
           />
           <Route 
             path="/profile" 
