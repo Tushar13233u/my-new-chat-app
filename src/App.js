@@ -258,7 +258,7 @@ function App() {
             element={user ? <Navigate to="/" /> : <Login />} 
           />
           <Route 
-            path="/chat" 
+            path="/chat/:userId" 
             element={user ? <PrivateChatRoom user={user} /> : <Navigate to="/login" />} 
           />
           <Route 

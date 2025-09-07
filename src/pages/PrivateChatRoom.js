@@ -10,7 +10,7 @@ import {
 } from '@mui/icons-material';
 import { signOut } from 'firebase/auth';
 import { ref, onValue } from 'firebase/database';
-import { Link as RouterLink, useSearchParams, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useParams, useNavigate } from 'react-router-dom';
 import {
   collection,
   addDoc,
@@ -92,6 +92,35 @@ const StyledBadge = styled(Badge)(({ theme, status }) => ({
   },
 }));
 
+const StyledButton = styled(Button)(({ theme }) => ({
+  borderRadius: '50%',
+  width: '48px',
+  height: '48px',
+  minWidth: 0,
+  background: theme.palette.primary.main,
+  color: theme.palette.primary.contrastText,
+  boxShadow: theme.shadows[2],
+  transition: 'transform 0.2s',
+  '&:hover': {
+    background: theme.palette.primary.dark,
+    transform: 'scale(1.1)',
+  },
+}));
+
+const StyledTextField = styled(TextField)(({ theme }) => ({
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '25px',
+    background: theme.palette.background.default,
+    fontSize: 16,
+    fontWeight: 400,
+    boxShadow: 'none',
+    transition: 'box-shadow 0.2s',
+    '&:hover': {
+      boxShadow: '0 0 10px rgba(0,0,0,0.2)',
+    },
+  },
+}));
+
 function PrivateChatRoom({ user }) {
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
@@ -109,13 +138,12 @@ function PrivateChatRoom({ user }) {
   const typingTimeoutRef = useRef(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const selectedUserId = searchParams.get('uid');
+  const { userId } = useParams();
 
   useEffect(() => {
-    if (selectedUserId) {
-      const userRef = doc(db, 'users', selectedUserId);
+    if (userId) {
+      const userRef = doc(db, 'users', userId);
       getDoc(userRef).then((docSnap) => {
         if (docSnap.exists()) {
           setSelectedUser(docSnap.data());
@@ -123,13 +151,8 @@ function PrivateChatRoom({ user }) {
           console.log("No such document!");
         }
       });
-    } else if (!isMobile) {
-      // On desktop, if no user is selected via URL, you might want to select the first user or show a message.
-    } else {
-      // On mobile, if no user is selected, redirect to home to see the chat list.
-      navigate('/');
     }
-  }, [selectedUserId, isMobile, navigate]);
+  }, [userId]);
 
   useEffect(() => {
     const grouped = groupMessagesByDate(messages);
@@ -341,7 +364,7 @@ function PrivateChatRoom({ user }) {
               key={otherUser.uid}
               selected={selectedUser?.uid === otherUser.uid}
               onClick={() => {
-                navigate(`/chat?uid=${otherUser.uid}`);
+                navigate(`/chat/${otherUser.uid}`);
                 if (isMobile) setDrawerOpen(false);
               }}
             >
@@ -479,41 +502,21 @@ function PrivateChatRoom({ user }) {
                 </Box>
               )}
               <form onSubmit={sendMessage} style={{ display: 'flex', alignItems: 'center' }}>
-                <TextField
+                <StyledTextField
                   fullWidth
                   variant="outlined"
                   placeholder="Type a message..."
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   autoComplete="off"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '25px',
-                      background: theme.palette.background.default,
-                      fontSize: 16,
-                      fontWeight: 400,
-                      boxShadow: 'none',
-                    },
-                  }}
                 />
-                <Button
+                <StyledButton
                   type="submit"
                   variant="contained"
-                  sx={{
-                    ml: 1,
-                    borderRadius: '50%',
-                    width: '48px',
-                    height: '48px',
-                    minWidth: 0,
-                    background: theme.palette.primary.main,
-                    color: theme.palette.primary.contrastText,
-                    boxShadow: theme.shadows[2],
-                    '&:hover': { background: theme.palette.primary.dark },
-                  }}
                   disabled={!newMessage.trim()}
                 >
                   <Send />
-                </Button>
+                </StyledButton>
               </form>
             </Paper>
           )}
