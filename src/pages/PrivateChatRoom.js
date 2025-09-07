@@ -358,7 +358,7 @@ function PrivateChatRoom({ user }) {
                     anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                     variant="dot"
                   >
-                    <Avatar {...stringAvatar(otherUser.displayName)} />
+                    <Avatar src={otherUser.photoURL} {...stringAvatar(otherUser.displayName)} />
                   </StyledBadge>
                 </Badge>
               </ListItemIcon>
@@ -428,7 +428,7 @@ function PrivateChatRoom({ user }) {
                 <People />
               </IconButton>
             )}
-            {selectedUser && <Avatar sx={{ mr: 2, fontWeight: 700, fontSize: 20, boxShadow: 2 }} {...stringAvatar(selectedUser.displayName)} />}
+            {selectedUser && <Avatar src={selectedUser.photoURL} sx={{ mr: 2, fontWeight: 700, fontSize: 20, boxShadow: 2 }} {...stringAvatar(selectedUser.displayName)} />}
             <Box sx={{ flexGrow: 1 }}>
               <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
                 {selectedUser ? selectedUser.displayName || selectedUser.email : 'Select a user'}
