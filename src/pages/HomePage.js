@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase/config';
-import { Box, Typography, List, ListItem, ListItemText, Avatar, AppBar, Toolbar, IconButton, Button } from '@mui/material';
+import { Box, Typography, List, ListItem, ListItemText, Avatar, AppBar, Toolbar, IconButton } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
+import { Logout } from '@mui/icons-material';
 
 function HomePage() {
   const [users, setUsers] = useState([]); // all users
@@ -54,9 +55,9 @@ function HomePage() {
           <IconButton color="inherit" onClick={() => navigate('/profile')}>
             <Avatar src={currentUserPFP} />
           </IconButton>
-          <Button color="inherit" onClick={handleLogout}>
-            Logout
-          </Button>
+          <IconButton color="inherit" onClick={handleLogout}>
+            <Logout />
+          </IconButton>
         </Toolbar>
       </AppBar>
       <List>
