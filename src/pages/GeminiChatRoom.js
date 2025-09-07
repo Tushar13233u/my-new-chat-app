@@ -43,6 +43,7 @@ function GeminiChatRoom() {
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const messageInputRef = useRef(null);
   const navigate = useNavigate();
   const user = auth.currentUser;
 
@@ -86,6 +87,9 @@ function GeminiChatRoom() {
 
     setNewMessage('');
     setIsLoading(true);
+    if (messageInputRef.current) {
+      messageInputRef.current.blur();
+    }
 
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest"});
@@ -176,6 +180,7 @@ function GeminiChatRoom() {
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             autoComplete="off"
+            inputRef={messageInputRef}
           />
           <Button
             type="submit"

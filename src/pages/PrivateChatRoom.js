@@ -136,6 +136,7 @@ function PrivateChatRoom({ user }) {
   const [replyingTo, setReplyingTo] = useState(null);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const messageInputRef = useRef(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
@@ -276,6 +277,9 @@ function PrivateChatRoom({ user }) {
 
       // Send browser notification directly (FREE approach)
       await sendBrowserNotification(selectedUser, tempNewMessage);
+      if (messageInputRef.current) {
+        messageInputRef.current.blur();
+      }
     } catch (error) {
       console.error('Error sending message: ', error);
       setNewMessage(tempNewMessage);
@@ -509,6 +513,7 @@ function PrivateChatRoom({ user }) {
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   autoComplete="off"
+                  inputRef={messageInputRef}
                 />
                 <StyledButton
                   type="submit"

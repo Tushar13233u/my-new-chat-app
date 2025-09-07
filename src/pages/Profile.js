@@ -11,10 +11,12 @@ function Profile() {
     const navigate = useNavigate();
 
     const [username, setUsername] = useState('');
+    const [bio, setBio] = useState('');
     const [photoURL, setPhotoURL] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [nameChangeHistory, setNameChangeHistory] = useState([]);
 
     useEffect(() => {
         if (currentUser) {
@@ -23,7 +25,9 @@ function Profile() {
                 if (userDoc.exists()) {
                     const userData = userDoc.data();
                     setUsername(userData.displayName || '');
+                    setBio(userData.bio || '');
                     setPhotoURL(userData.photoURL || '');
+                    setNameChangeHistory(userData.nameChangeHistory || []);
                 }
             };
             fetchUserData();
@@ -59,11 +63,28 @@ function Profile() {
                 throw new Error("Username already taken. Please choose another one.");
             }
 
+            let updatedNameChangeHistory = [...nameChangeHistory];
+            const fourteenDaysAgo = Date.now() - (14 * 24 * 60 * 60 * 1000);
+            updatedNameChangeHistory = updatedNameChangeHistory.filter(timestamp => timestamp > fourteenDaysAgo);
+
+            if (username !== currentUser.displayName) {
+                if (updatedNameChangeHistory.length >= 2) {
+                    throw new Error("You can only change your username twice within 14 days.");
+                }
+                updatedNameChangeHistory.push(Date.now());
+            }
+
             await updateProfile(currentUser, { displayName: username, photoURL: photoURL });
 
             const userRef = doc(db, 'users', currentUser.uid);
-            await updateDoc(userRef, { displayName: username, photoURL: photoURL });
+            await updateDoc(userRef, { 
+                displayName: username, 
+                photoURL: photoURL, 
+                bio: bio, 
+                nameChangeHistory: updatedNameChangeHistory 
+            });
 
+            setNameChangeHistory(updatedNameChangeHistory);
             setSuccess('Profile updated successfully! The change will be fully reflected when you next log in.');
         } catch (err) {
             setError(err.message);
@@ -119,6 +140,17 @@ function Profile() {
                         name="photoURL"
                         value={photoURL}
                         onChange={(e) => setPhotoURL(e.target.value)}
+                    />
+                    <TextField
+                        margin="normal"
+                        fullWidth
+                        id="bio"
+                        label="Bio"
+                        name="bio"
+                        value={bio}
+                        onChange={(e) => setBio(e.target.value)}
+                        multiline
+                        rows={3}
                     />
                     <Button
                         type="submit"
