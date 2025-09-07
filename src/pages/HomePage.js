@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { db, auth } from '../firebase/config';
-import { Box, Typography, List, ListItem, ListItemText, Avatar, AppBar, Toolbar, IconButton, Fab } from '@mui/material';
-import { Add } from '@mui/icons-material';
+import { Box, Typography, List, ListItem, ListItemText, Avatar, AppBar, Toolbar } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
 
 function HomePage() {
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState([]); // all users
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Fetch all users
     const q = query(collection(db, 'users'), where('uid', '!=', auth.currentUser.uid));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const usersArray = [];
@@ -18,7 +18,6 @@ function HomePage() {
       });
       setUsers(usersArray);
     });
-
     return () => unsubscribe();
   }, []);
 
@@ -43,9 +42,6 @@ function HomePage() {
           </ListItem>
         ))}
       </List>
-      <Fab color="primary" aria-label="add" sx={{ position: 'absolute', bottom: 16, right: 16 }} component={Link} to="/users">
-        <Add />
-      </Fab>
     </Box>
   );
 }

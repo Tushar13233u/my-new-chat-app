@@ -259,54 +259,36 @@ function PrivateChatRoom({ user }) {
     }
   };
 
-  // FREE notification function without Cloud Functions
+  // Simple notification system
   const sendBrowserNotification = async (receiver, messageText) => {
     try {
-      // Get receiver's FCM token from Firestore
-      const receiverDoc = await getDoc(doc(db, 'users', receiver.uid));
-      const receiverData = receiverDoc.data();
-      const fcmToken = receiverData?.fcmToken;
-
-      if (!fcmToken) {
-        console.log('No FCM token found for receiver');
-        return;
-      }
-
-      // Use Firebase REST API to send notification (FREE)
-      const serverKey = '5b711d22f2b878c8eac8ffa6ddd916d31098f255';
+      console.log('🔔 Sending notification for:', receiver.displayName);
       
-      const notificationPayload = {
-        to: fcmToken,
-        notification: {
-          title: user.displayName || 'New Message',
-          body: messageText.length > 50 ? messageText.substring(0, 50) + '...' : messageText,
-          icon: '/logo192.png',
-          click_action: `${window.location.origin}/#/chat?uid=${user.uid}`
-        },
-        data: {
-          chatId: [user.uid, receiver.uid].sort().join('_'),
-          senderId: user.uid,
-          senderName: user.displayName || 'Someone'
-        }
+      // Store notification in Firestore for cross-browser delivery
+      const notificationData = {
+        receiverId: receiver.uid,
+        senderId: user.uid,
+        senderName: user.displayName || 'Someone',
+        message: messageText,
+        timestamp: serverTimestamp(),
+        read: false,
+        type: 'message'
       };
 
-      // Send via fetch (no server needed!)
-      const response = await fetch('https://fcm.googleapis.com/fcm/send', {
-        method: 'POST',
-        headers: {
-          'Authorization': `key=${serverKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(notificationPayload)
-      });
+      await addDoc(collection(db, 'notifications'), notificationData);
+      console.log('✅ Notification stored in Firestore');
 
-      if (response.ok) {
-        console.log('Notification sent successfully!');
-      } else {
-        console.log('Failed to send notification');
+      // Also show immediate notification to sender
+      if (Notification.permission === 'granted') {
+        new Notification(`✅ Message sent to ${receiver.displayName}`, {
+          body: messageText,
+          icon: '/logo192.png',
+          tag: 'message-sent'
+        });
       }
+
     } catch (error) {
-      console.error('Error sending notification:', error);
+      console.error('❌ Error sending notification:', error);
     }
   };
 

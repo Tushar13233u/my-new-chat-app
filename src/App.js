@@ -6,7 +6,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { ref, onValue, set, onDisconnect, serverTimestamp } from 'firebase/database';
 import { auth, rtdb, messaging, db } from './firebase/config';
 import { getToken, onMessage } from 'firebase/messaging';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
 import Login from './pages/Login';
 import PrivateChatRoom from './pages/PrivateChatRoom';
 import Profile from './pages/Profile';
@@ -179,6 +179,61 @@ function App() {
           // Auto close after 5 seconds
           setTimeout(() => notification.close(), 5000);
         }
+      });
+
+      return () => unsubscribe();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      console.log('🔔 Setting up notification listener for user:', user.uid);
+      
+      const notificationsRef = collection(db, 'notifications');
+      const q = query(
+        notificationsRef, 
+        where('receiverId', '==', user.uid),
+        where('read', '==', false)
+      );
+      
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        console.log('📬 Notification snapshot received, changes:', querySnapshot.docChanges().length);
+        
+        querySnapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            const notificationData = change.doc.data();
+            console.log('🔔 New notification received:', notificationData);
+            
+            // Show browser notification
+            if (Notification.permission === 'granted') {
+              console.log('✅ Showing browser notification');
+              const notification = new Notification(
+                `💬 ${notificationData.senderName || 'New Message'}`,
+                {
+                  body: notificationData.message,
+                  icon: '/logo192.png',
+                  tag: 'chat-notification',
+                  requireInteraction: false
+                }
+              );
+
+              notification.onclick = function() {
+                window.focus();
+                window.location.href = `/#/chat?uid=${notificationData.senderId}`;
+                notification.close();
+              };
+
+              // Auto close after 5 seconds
+              setTimeout(() => notification.close(), 5000);
+            } else {
+              console.log('❌ Notification permission not granted');
+            }
+
+            // Mark notification as read
+            const notificationRef = doc(db, 'notifications', change.doc.id);
+            setDoc(notificationRef, { read: true }, { merge: true });
+          }
+        });
       });
 
       return () => unsubscribe();
