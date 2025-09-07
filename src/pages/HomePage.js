@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../firebase/config';
-import { Box, Typography, List, ListItem, ListItemText, Avatar, AppBar, Toolbar } from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom';
+import { Box, Typography, List, ListItem, ListItemText, Avatar, AppBar, Toolbar, IconButton } from '@mui/material';
+import { AccountCircle } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 
 function HomePage() {
   const [users, setUsers] = useState([]); // all users
@@ -32,6 +33,9 @@ function HomePage() {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Chats
           </Typography>
+          <IconButton color="inherit" onClick={() => navigate('/profile')}>
+            <AccountCircle />
+          </IconButton>
         </Toolbar>
       </AppBar>
       <List>

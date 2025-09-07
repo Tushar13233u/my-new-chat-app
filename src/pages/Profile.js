@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Container, Paper, Typography, TextField, Button, Alert, CircularProgress, Avatar } from '@mui/material';
 import { updateProfile } from 'firebase/auth';
-import { doc, updateDoc, query, collection, where, getDocs } from 'firebase/firestore';
-import { auth, db } from '../firebase/config'; // <-- यहाँ ठीक किया गया है
+import { doc, updateDoc, query, collection, where, getDocs, getDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase/config';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { AccountCircle, ArrowBack } from '@mui/icons-material';
 
@@ -11,23 +11,30 @@ function Profile() {
     const navigate = useNavigate();
 
     const [username, setUsername] = useState('');
+    const [photoURL, setPhotoURL] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
     useEffect(() => {
         if (currentUser) {
-            setUsername(currentUser.displayName || '');
+            const fetchUserData = async () => {
+                const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                    setUsername(userData.displayName || '');
+                    setPhotoURL(userData.photoURL || '');
+                }
+            };
+            fetchUserData();
         } else {
-            // अगर यूज़र लॉग-इन नहीं है, तो उसे लॉग-इन पेज पर भेजें
             navigate('/login');
         }
     }, [currentUser, navigate]);
 
-    // यह चेक करता है कि नया यूज़रनेम किसी और ने तो नहीं लिया है
     const isUsernameUnique = async (name) => {
         if (name === currentUser.displayName) {
-            return true; // यूज़रनेम बदला नहीं गया है
+            return true;
         }
         const q = query(collection(db, "users"), where("displayName", "==", name));
         const querySnapshot = await getDocs(q);
@@ -39,8 +46,8 @@ function Profile() {
         setError('');
         setSuccess('');
 
-        if (!username.trim() || username === currentUser.displayName) {
-            setError("Please enter a new username.");
+        if (!username.trim()) {
+            setError("Please enter a username.");
             return;
         }
 
@@ -52,12 +59,10 @@ function Profile() {
                 throw new Error("Username already taken. Please choose another one.");
             }
 
-            // Firebase Auth प्रोफ़ाइल अपडेट करें
-            await updateProfile(currentUser, { displayName: username });
+            await updateProfile(currentUser, { displayName: username, photoURL: photoURL });
 
-            // Firestore में यूज़र डॉक्यूमेंट अपडेट करें
             const userRef = doc(db, 'users', currentUser.uid);
-            await updateDoc(userRef, { displayName: username });
+            await updateDoc(userRef, { displayName: username, photoURL: photoURL });
 
             setSuccess('Profile updated successfully! The change will be fully reflected when you next log in.');
         } catch (err) {
@@ -68,17 +73,16 @@ function Profile() {
     };
 
     if (!currentUser) {
-        // यह एक फॉलबैक है, useEffect पहले ही रीडायरेक्ट कर देगा।
         return <CircularProgress />;
     }
 
     return (
         <Container component="main" maxWidth="sm" sx={{ mt: 8 }}>
-            <Button component={RouterLink} to="/chat" startIcon={<ArrowBack />} sx={{ mb: 2 }}>
-                Back to Chat
+            <Button component={RouterLink} to="/" startIcon={<ArrowBack />} sx={{ mb: 2 }}>
+                Back to Home
             </Button>
             <Paper elevation={3} sx={{ p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'text.primary' }}>
-                <Avatar sx={{ m: 1, bgcolor: 'secondary.main' }}>
+                <Avatar src={photoURL} sx={{ m: 1, bgcolor: 'secondary.main', width: 100, height: 100 }}>
                     <AccountCircle />
                 </Avatar>
                 <Typography component="h1" variant="h5" sx={{ color: 'text.primary' }}>
@@ -107,14 +111,23 @@ function Profile() {
                         onChange={(e) => setUsername(e.target.value)}
                         autoFocus
                     />
+                    <TextField
+                        margin="normal"
+                        fullWidth
+                        id="photoURL"
+                        label="Photo URL"
+                        name="photoURL"
+                        value={photoURL}
+                        onChange={(e) => setPhotoURL(e.target.value)}
+                    />
                     <Button
                         type="submit"
                         fullWidth
                         variant="contained"
-                        disabled={loading || !username.trim() || username === currentUser.displayName}
+                        disabled={loading}
                         sx={{ mt: 3, mb: 2 }}
                     >
-                        {loading ? <CircularProgress size={24} color="inherit" /> : 'Update Username'}
+                        {loading ? <CircularProgress size={24} color="inherit" /> : 'Update Profile'}
                     </Button>
                 </Box>
             </Paper>
