@@ -4,7 +4,7 @@ import { db, auth } from '../firebase/config';
 import { Box, Typography, List, ListItem, ListItemText, Avatar, AppBar, Toolbar, IconButton, Fab } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
-import { Logout, SmartToy } from '@mui/icons-material';
+import { Logout } from '@mui/icons-material';
 
 function HomePage() {
   const [users, setUsers] = useState([]); // all users
@@ -69,7 +69,7 @@ function HomePage() {
         ))}
       </List>
       <Fab color="primary" aria-label="add" sx={{ position: 'absolute', bottom: 16, right: 16 }} onClick={() => navigate('/gemini-chat')}>
-        <SmartToy />
+        <img src="/gemini.svg" alt="Gemini AI" style={{ width: 24, height: 24 }} />
       </Fab>
     </Box>
   );
