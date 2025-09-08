@@ -122,25 +122,27 @@ const StyledTextField = styled(TextField)(({ theme }) => ({
 }));
 
 function PrivateChatRoom({ user }) {
-  const [users, setUsers] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
+  const { userId } = useParams();
+  const navigate = useNavigate();
+  const [newMessage, setNewMessage] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [processedMessages, setProcessedMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [drawerOpen, setDrawerOpen] = useState(true);
-  const [unreadMessages, setUnreadMessages] = useState({});
-  const [userStatuses, setUserStatuses] = useState({});
   const [otherTyping, setOtherTyping] = useState(false);
-  const [contextMenu, setContextMenu] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [userStatuses, setUserStatuses] = useState({});
+  const [unreadMessages, setUnreadMessages] = useState({});
   const [replyingTo, setReplyingTo] = useState(null);
-  const messagesEndRef = useRef(null);
+  const [contextMenu, setContextMenu] = useState(null);
+
   const typingTimeoutRef = useRef(null);
+  const messagesEndRef = useRef(null);
   const messageInputRef = useRef(null);
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const navigate = useNavigate();
-  const { userId } = useParams();
+  const [drawerOpen, setDrawerOpen] = useState(!isMobile);
 
   useEffect(() => {
     if (userId) {
@@ -150,8 +152,11 @@ function PrivateChatRoom({ user }) {
           setSelectedUser(docSnap.data());
         } else {
           console.log("No such document!");
+          setSelectedUser(null); // Ensure selectedUser is null if not found
         }
       });
+    } else {
+      setSelectedUser(null); // Clear selected user if userId is not present
     }
   }, [userId]);
 
@@ -389,7 +394,18 @@ function PrivateChatRoom({ user }) {
                   </StyledBadge>
                 </Badge>
               </ListItemIcon>
-              <ListItemText primary={otherUser.displayName || otherUser.email} />
+              <ListItemText
+                primary={
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography component="span" variant="body1" sx={{ fontWeight: 'bold' }}>
+                      {otherUser.displayName || otherUser.email}
+                    </Typography>
+                    <Typography component="span" variant="caption" sx={{ ml: 1, color: theme.palette.text.secondary }}>
+                      ({userStatuses[otherUser.uid]?.state || 'offline'})
+                    </Typography>
+                  </Box>
+                }
+              />
             </ListItem>
           ))}
         </List>

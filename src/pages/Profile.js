@@ -3,41 +3,57 @@ import { Box, Container, Paper, Typography, TextField, Button, Alert, CircularPr
 import { updateProfile } from 'firebase/auth';
 import { doc, updateDoc, query, collection, where, getDocs, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import { AccountCircle, ArrowBack } from '@mui/icons-material';
 
 function Profile() {
     const currentUser = auth.currentUser;
     const navigate = useNavigate();
+    const { userId } = useParams(); // Get userId from URL parameters
 
+    const [targetUser, setTargetUser] = useState(null);
     const [username, setUsername] = useState('');
     const [bio, setBio] = useState('');
     const [photoURL, setPhotoURL] = useState('');
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const [nameChangeHistory, setNameChangeHistory] = useState([]);
 
     useEffect(() => {
-        if (currentUser) {
-            const fetchUserData = async () => {
-                const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        const fetchUserData = async () => {
+            if (!currentUser) {
+                navigate('/login');
+                return;
+            }
+
+            const targetUid = userId || currentUser.uid; // Use userId from URL or current user's UID
+
+            try {
+                const userDoc = await getDoc(doc(db, 'users', targetUid));
                 if (userDoc.exists()) {
                     const userData = userDoc.data();
+                    setTargetUser({ id: userDoc.id, ...userData });
                     setUsername(userData.displayName || '');
                     setBio(userData.bio || '');
                     setPhotoURL(userData.photoURL || '');
-                    setNameChangeHistory(userData.nameChangeHistory || []);
+                } else {
+                    setError("User not found.");
                 }
-            };
-            fetchUserData();
-        } else {
-            navigate('/login');
-        }
-    }, [currentUser, navigate]);
+            } catch (err) {
+                console.error("Error fetching user data:", err);
+                setError("Failed to load user data.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchUserData();
+    }, [userId, currentUser, navigate]);
+
+    const isCurrentUserProfile = targetUser && currentUser && targetUser.id === currentUser.uid;
 
     const isUsernameUnique = async (name) => {
-        if (name === currentUser.displayName) {
+        if (name === targetUser.displayName) {
             return true;
         }
         const q = query(collection(db, "users"), where("displayName", "==", name));
@@ -63,29 +79,16 @@ function Profile() {
                 throw new Error("Username already taken. Please choose another one.");
             }
 
-            let updatedNameChangeHistory = [...nameChangeHistory];
-            const fourteenDaysAgo = Date.now() - (14 * 24 * 60 * 60 * 1000);
-            updatedNameChangeHistory = updatedNameChangeHistory.filter(timestamp => timestamp > fourteenDaysAgo);
-
-            if (username !== currentUser.displayName) {
-                if (updatedNameChangeHistory.length >= 2) {
-                    throw new Error("You can only change your username twice within 14 days.");
-                }
-                updatedNameChangeHistory.push(Date.now());
-            }
-
             await updateProfile(currentUser, { displayName: username, photoURL: photoURL });
 
             const userRef = doc(db, 'users', currentUser.uid);
             await updateDoc(userRef, { 
                 displayName: username, 
                 photoURL: photoURL, 
-                bio: bio, 
-                nameChangeHistory: updatedNameChangeHistory 
+                bio: bio,
             });
 
-            setNameChangeHistory(updatedNameChangeHistory);
-            setSuccess('Profile updated successfully! The change will be fully reflected when you next log in.');
+            setSuccess('Profile updated successfully!');
         } catch (err) {
             setError(err.message);
         } finally {
@@ -93,8 +96,27 @@ function Profile() {
         }
     };
 
-    if (!currentUser) {
-        return <CircularProgress />;
+    if (loading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
+
+    if (error) {
+        return (
+            <Container component="main" maxWidth="sm" sx={{ mt: 8 }}>
+                <Alert severity="error">{error}</Alert>
+                <Button component={RouterLink} to="/" startIcon={<ArrowBack />} sx={{ mt: 2 }}>
+                    Back to Home
+                </Button>
+            </Container>
+        );
+    }
+
+    if (!targetUser) {
+        return null; // Should not happen if loading and error are handled
     }
 
     return (
@@ -107,20 +129,22 @@ function Profile() {
                     <AccountCircle />
                 </Avatar>
                 <Typography component="h1" variant="h5" sx={{ color: 'text.primary' }}>
-                    Profile
+                    {targetUser.displayName || 'User Profile'}
                 </Typography>
                 <Box component="form" onSubmit={handleUpdate} noValidate sx={{ mt: 1 }}>
                     {error && <Alert severity="error" sx={{ mb: 2, width: '100%' }}>{error}</Alert>}
                     {success && <Alert severity="success" sx={{ mb: 2, width: '100%' }}>{success}</Alert>}
-                    <TextField
-                        margin="normal"
-                        fullWidth
-                        id="email"
-                        label="Email Address"
-                        name="email"
-                        value={currentUser.email}
-                        disabled
-                    />
+                    {isCurrentUserProfile && (
+                        <TextField
+                            margin="normal"
+                            fullWidth
+                            id="email"
+                            label="Email Address"
+                            name="email"
+                            value={targetUser.email}
+                            disabled
+                        />
+                    )}
                     <TextField
                         margin="normal"
                         required
@@ -131,6 +155,7 @@ function Profile() {
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         autoFocus
+                        disabled={!isCurrentUserProfile}
                     />
                     <TextField
                         margin="normal"
@@ -140,6 +165,7 @@ function Profile() {
                         name="photoURL"
                         value={photoURL}
                         onChange={(e) => setPhotoURL(e.target.value)}
+                        disabled={!isCurrentUserProfile}
                     />
                     <TextField
                         margin="normal"
@@ -151,16 +177,19 @@ function Profile() {
                         onChange={(e) => setBio(e.target.value)}
                         multiline
                         rows={3}
+                        disabled={!isCurrentUserProfile}
                     />
-                    <Button
-                        type="submit"
-                        fullWidth
-                        variant="contained"
-                        disabled={loading}
-                        sx={{ mt: 3, mb: 2 }}
-                    >
-                        {loading ? <CircularProgress size={24} color="inherit" /> : 'Update Profile'}
-                    </Button>
+                    {isCurrentUserProfile && (
+                        <Button
+                            type="submit"
+                            fullWidth
+                            variant="contained"
+                            disabled={loading}
+                            sx={{ mt: 3, mb: 2 }}
+                        >
+                            {loading ? <CircularProgress size={24} color="inherit" /> : 'Update Profile'}
+                        </Button>
+                    )}
                 </Box>
             </Paper>
         </Container>

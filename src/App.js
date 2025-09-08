@@ -13,6 +13,8 @@ import Profile from './pages/Profile';
 import HomePage from './pages/HomePage';
 import UserList from './pages/UserList';
 import GeminiChatRoom from './pages/GeminiChatRoom';
+import { Snackbar, Alert } from '@mui/material';
+import { useLocation } from 'react-router-dom';
 
 const lightTheme = createTheme({
   palette: {
@@ -80,6 +82,134 @@ const darkTheme = createTheme({
     },
   },
 });
+
+function AppContent({ user, loading, theme }) {
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('info');
+  const location = useLocation();
+
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbarOpen(false);
+  };
+
+  useEffect(() => {
+    if (user) {
+      console.log('🔔 Setting up notification listener for user:', user.uid);
+      
+      const notificationsRef = collection(db, 'notifications');
+      const q = query(
+        notificationsRef, 
+        where('receiverId', '==', user.uid),
+        where('read', '==', false)
+      );
+      
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        console.log('📬 Notification snapshot received, changes:', querySnapshot.docChanges().length);
+        
+        querySnapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            const notificationData = change.doc.data();
+            console.log('🔔 New notification received:', notificationData);
+
+            // Check if the user is currently in the chat with the sender
+            const currentChatPath = `/chat/${notificationData.senderId}`;
+            const isCurrentlyInChat = location.pathname === currentChatPath;
+
+            if (!isCurrentlyInChat) {
+              // Show browser notification
+              if (Notification.permission === 'granted') {
+                console.log('✅ Showing browser notification');
+                const notification = new Notification(
+                  `💬 ${notificationData.senderName || 'New Message'}`,
+                  {
+                    body: notificationData.message,
+                    icon: '/logo192.png',
+                    tag: 'chat-notification',
+                    requireInteraction: false
+                  }
+                );
+
+                notification.onclick = function() {
+                  window.focus();
+                  window.location.href = `/#/chat/${notificationData.senderId}`;
+                  notification.close();
+                };
+
+                // Auto close after 5 seconds
+                setTimeout(() => notification.close(), 5000);
+              } else {
+                console.log('❌ Notification permission not granted');
+              }
+
+              // Show in-app Snackbar notification
+              setSnackbarMessage(`New message from ${notificationData.senderName}: ${notificationData.message}`);
+              setSnackbarSeverity('info');
+              setSnackbarOpen(true);
+            }
+
+            // Mark notification as read
+            const notificationRef = doc(db, 'notifications', change.doc.id);
+            setDoc(notificationRef, { read: true }, { merge: true });
+          }
+        });
+      });
+
+      return () => unsubscribe();
+    }
+  }, [user, location.pathname]); // Add location.pathname to dependencies
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <>
+      <Routes>
+        <Route
+          path="/login"
+          element={user ? <Navigate to="/" /> : <Login />}
+        />
+        <Route
+          path="/chat/:userId"
+          element={user ? <PrivateChatRoom user={user} /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/gemini-chat"
+          element={user ? <GeminiChatRoom /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/profile"
+          element={user ? <Profile /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/profile/:userId"
+          element={user ? <Profile /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/users"
+          element={user ? <UserList /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/"
+          element={user ? <HomePage /> : <Navigate to="/login" />}
+        />
+      </Routes>
+      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleSnackbarClose}>
+        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </>
+  );
+}
 
 function App() {
   const [user, setUser] = useState(null);
@@ -186,100 +316,12 @@ function App() {
     }
   }, [user]);
 
-  useEffect(() => {
-    if (user) {
-      console.log('🔔 Setting up notification listener for user:', user.uid);
-      
-      const notificationsRef = collection(db, 'notifications');
-      const q = query(
-        notificationsRef, 
-        where('receiverId', '==', user.uid),
-        where('read', '==', false)
-      );
-      
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        console.log('📬 Notification snapshot received, changes:', querySnapshot.docChanges().length);
-        
-        querySnapshot.docChanges().forEach((change) => {
-          if (change.type === 'added') {
-            const notificationData = change.doc.data();
-            console.log('🔔 New notification received:', notificationData);
-            
-            // Show browser notification
-            if (Notification.permission === 'granted') {
-              console.log('✅ Showing browser notification');
-              const notification = new Notification(
-                `💬 ${notificationData.senderName || 'New Message'}`,
-                {
-                  body: notificationData.message,
-                  icon: '/logo192.png',
-                  tag: 'chat-notification',
-                  requireInteraction: false
-                }
-              );
-
-              notification.onclick = function() {
-                window.focus();
-                window.location.href = `/#/chat?uid=${notificationData.senderId}`;
-                notification.close();
-              };
-
-              // Auto close after 5 seconds
-              setTimeout(() => notification.close(), 5000);
-            } else {
-              console.log('❌ Notification permission not granted');
-            }
-
-            // Mark notification as read
-            const notificationRef = doc(db, 'notifications', change.doc.id);
-            setDoc(notificationRef, { read: true }, { merge: true });
-          }
-        });
-      });
-
-      return () => unsubscribe();
-    }
-  }, [user]);
-
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-  <HashRouter>
-        <Routes>
-          <Route 
-            path="/login" 
-            element={user ? <Navigate to="/" /> : <Login />} 
-          />
-          <Route 
-            path="/chat/:userId" 
-            element={user ? <PrivateChatRoom user={user} /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/gemini-chat" 
-            element={user ? <GeminiChatRoom /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/profile" 
-            element={user ? <Profile /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/users" 
-            element={user ? <UserList /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/" 
-            element={user ? <HomePage /> : <Navigate to="/login" />} 
-          />
-        </Routes>
-  </HashRouter>
+      <HashRouter>
+        <AppContent user={user} loading={loading} theme={theme} />
+      </HashRouter>
     </ThemeProvider>
   );
 }
