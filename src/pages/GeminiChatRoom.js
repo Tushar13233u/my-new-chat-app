@@ -123,7 +123,7 @@ function GeminiChatRoom() {
           <IconButton color="inherit" onClick={() => navigate(-1)} edge="start" sx={{ mr: 2 }}>
             <ArrowBack />
           </IconButton>
-          <Avatar src="/gemini.svg" sx={{ mr: 2 }} />
+          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=" alt="Gemini Logo" style={{ width: 40, height: 40, marginRight: 16 }} />
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Gemini AI
           </Typography>
