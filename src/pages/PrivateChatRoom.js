@@ -139,6 +139,7 @@ function PrivateChatRoom({ user }) {
   const typingTimeoutRef = useRef(null);
   const messagesEndRef = useRef(null);
   const messageInputRef = useRef(null);
+  const inputRef = useRef(null);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -255,6 +256,20 @@ function PrivateChatRoom({ user }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [processedMessages, otherTyping]);
 
+  useEffect(() => {
+    if (typeof window.visualViewport !== 'undefined') {
+      const handleResize = () => {
+        if (inputRef.current) {
+          inputRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+      };
+      window.visualViewport.addEventListener('resize', handleResize);
+      return () => {
+        window.visualViewport.removeEventListener('resize', handleResize);
+      };
+    }
+  }, []);
+
   const sendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedUser) return;
@@ -294,8 +309,8 @@ function PrivateChatRoom({ user }) {
   // Simple notification system
   const sendBrowserNotification = async (receiver, messageText) => {
     try {
-      console.log('🔔 Sending notification for:', receiver.displayName);
-      
+      console.log('\ud83d\udd14 Sending notification for:', receiver.displayName);
+
       // Store notification in Firestore for cross-browser delivery
       const notificationData = {
         receiverId: receiver.uid,
@@ -304,23 +319,25 @@ function PrivateChatRoom({ user }) {
         message: messageText,
         timestamp: serverTimestamp(),
         read: false,
-        type: 'message'
+        type: 'message',
       };
 
       await addDoc(collection(db, 'notifications'), notificationData);
-      console.log('✅ Notification stored in Firestore');
+      console.log('\u2705 Notification stored in Firestore');
 
-      // Also show immediate notification to sender
-      if (Notification.permission === 'granted') {
-        new Notification(`✅ Message sent to ${receiver.displayName}`, {
+      // Show notification using ServiceWorkerRegistration
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        const registration = await navigator.serviceWorker.ready;
+        registration.showNotification(`\u2705 Message from ${user.displayName || 'Someone'}`, {
           body: messageText,
           icon: '/logo192.png',
-          tag: 'message-sent'
+          tag: 'message-received',
         });
+      } else {
+        console.warn('Service worker not available for notifications.');
       }
-
     } catch (error) {
-      console.error('❌ Error sending notification:', error);
+      console.error('\u274c Error sending notification:', error);
     }
   };
 
@@ -529,7 +546,7 @@ function PrivateChatRoom({ user }) {
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   autoComplete="off"
-                  inputRef={messageInputRef}
+                  inputRef={inputRef}
                 />
                 <StyledButton
                   type="submit"
