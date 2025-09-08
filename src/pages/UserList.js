@@ -52,7 +52,7 @@ function UserList() {
         {users.map((user) => (
           <ListItem button="true" key={user.id} onClick={() => handleUserClick(user)}>
             <Avatar src={user.photoURL} sx={{ mr: 2 }} />
-            <ListItemText primary={user.displayName} />
+            <ListItemText primary={user.displayName} secondary={user.bio} />
           </ListItem>
         ))}
       </List>
