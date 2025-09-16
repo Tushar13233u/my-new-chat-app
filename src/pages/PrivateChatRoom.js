@@ -464,7 +464,17 @@ function PrivateChatRoom({ user }) {
         {drawerContent}
       </Drawer>
 
-      <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', height: '100vh', maxHeight: '100vh', overflow: 'hidden' }}>
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100vh',
+          maxHeight: '100vh',
+          overflow: 'hidden',
+        }}
+      >
         <AppBar
           position="static"
           elevation={0}
