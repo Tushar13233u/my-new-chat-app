@@ -295,11 +295,11 @@ function PrivateChatRoom({ user }) {
       }
       await addDoc(messagesRef, messageData);
 
-      // Send browser notification directly (FREE approach)
-      await sendBrowserNotification(selectedUser, tempNewMessage);
-      if (messageInputRef.current) {
-        messageInputRef.current.blur();
+      // Hide keyboard and auto-scroll
+      if (inputRef.current) {
+        inputRef.current.blur();
       }
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     } catch (error) {
       console.error('Error sending message: ', error);
       setNewMessage(tempNewMessage);
