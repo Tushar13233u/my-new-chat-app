@@ -45,7 +45,18 @@ function GeminiChatRoom() {
   const messagesEndRef = useRef(null);
   const messageInputRef = useRef(null);
   const navigate = useNavigate();
-  const user = auth.currentUser;
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(user => {
+      if (user) {
+        setUser(user);
+      } else {
+        navigate('/login');
+      }
+    });
+    return unsubscribe;
+  }, [navigate]);
 
   const genAI = new GoogleGenerativeAI(process.env.REACT_APP_GEMINI_API_KEY);
 

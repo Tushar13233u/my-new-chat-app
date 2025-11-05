@@ -14,27 +14,28 @@ import HomePage from './pages/HomePage';
 import UserList from './pages/UserList';
 import GeminiChatRoom from './pages/GeminiChatRoom';
 import { Snackbar, Alert } from '@mui/material';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Outlet } from 'react-router-dom';
+import './App.css'; // Import the new CSS file
 
 const lightTheme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#6750A4',
+      main: '#008069', // WhatsApp green
     },
     secondary: {
-      main: '#625B71',
+      main: '#25D366', // Lighter green for accents
     },
     background: {
-      default: '#FFFBFE',
-      paper: '#FFFBFE',
+      default: '#e5ddd5', // Chat background
+      paper: '#ffffff', // White for cards/surfaces
     },
   },
   typography: {
     fontFamily: 'Roboto, Arial, sans-serif',
   },
   shape: {
-    borderRadius: 12,
+    borderRadius: 8, // Slightly less rounded
   },
 });
 
@@ -42,46 +43,76 @@ const darkTheme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#D0BCFF',
+      main: '#075E54', // Darker WhatsApp green
     },
     secondary: {
-      main: '#CCC2DC',
+      main: '#128C7E', // Darker accent green
     },
     background: {
-      default: '#1C1B1F',
-      paper: 'rgba(48, 47, 53, 0.5)',
+      default: '#1C1B1F', // Dark background
+      paper: '#262D31', // Darker paper for surfaces
     },
   },
   typography: {
     fontFamily: 'Roboto, Arial, sans-serif',
   },
   shape: {
-    borderRadius: 12,
+    borderRadius: 8, // Slightly less rounded
   },
   components: {
     MuiPaper: {
       styleOverrides: {
         root: {
-          backdropFilter: 'blur(10px)',
+          // backdropFilter: 'blur(10px)', // Removed
         },
       },
     },
     MuiAppBar: {
       styleOverrides: {
         root: {
-          backdropFilter: 'blur(10px)',
+          // backdropFilter: 'blur(10px)', // Removed
         },
       },
     },
     MuiDrawer: {
       styleOverrides: {
         paper: {
-          backdropFilter: 'blur(10px)',
+          // backdropFilter: 'blur(10px)', // Removed
         },
       },
     },
   },
 });
+
+function MainLayout({ user, theme }) {
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const location = useLocation();
+
+  // Determine if the sidebar (HomePage) should be visible
+  // On mobile, HomePage is visible when path is '/' or '/users'
+  // On desktop, HomePage is always visible
+  const showSidebar = !isMobile || (location.pathname === '/' || location.pathname === '/users');
+
+  // Determine if the chat main container (PrivateChatRoom, GeminiChatRoom) should be visible
+  // On mobile, it's visible when path is '/chat/:userId' or '/gemini-chat'
+  // On desktop, it's always visible
+  const showChatMain = !isMobile || (location.pathname.startsWith('/chat/') || location.pathname === '/gemini-chat');
+
+  return (
+    <Box className="app-container">
+      {showSidebar && (
+        <Box className="sidebar-container">
+          <HomePage user={user} />
+        </Box>
+      )}
+      {showChatMain && (
+        <Box className="chat-main-container">
+          <Outlet /> {/* This will render PrivateChatRoom or GeminiChatRoom */}
+        </Box>
+      )}
+    </Box>
+  );
+}
 
 function AppContent({ user, loading, theme }) {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -173,34 +204,15 @@ function AppContent({ user, loading, theme }) {
   return (
     <>
       <Routes>
-        <Route
-          path="/login"
-          element={user ? <Navigate to="/" /> : <Login />}
-        />
-        <Route
-          path="/chat/:userId"
-          element={user ? <PrivateChatRoom user={user} /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/gemini-chat"
-          element={user ? <GeminiChatRoom /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/profile"
-          element={user ? <Profile /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/profile/:userId"
-          element={user ? <Profile /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/users"
-          element={user ? <UserList /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/"
-          element={user ? <HomePage /> : <Navigate to="/login" />}
-        />
+        <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
+        <Route path="/" element={user ? <MainLayout user={user} theme={theme} /> : <Navigate to="/login" />}>
+          <Route index element={<HomePage user={user} />} /> {/* Default route for MainLayout */}
+          <Route path="chat/:userId" element={<PrivateChatRoom user={user} />} />
+          <Route path="gemini-chat" element={<GeminiChatRoom />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="profile/:userId" element={<Profile />} />
+          <Route path="users" element={<UserList />} /> {/* This might be redundant if HomePage already lists users */}
+        </Route>
       </Routes>
       <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleSnackbarClose}>
         <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
@@ -217,7 +229,7 @@ function App() {
   const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
 
   const theme = React.useMemo(
-    () => (prefersDarkMode ? darkTheme : lightTheme),
+    () => createTheme(prefersDarkMode ? darkTheme : lightTheme),
     [prefersDarkMode],
   );
 

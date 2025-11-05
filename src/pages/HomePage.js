@@ -1,23 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, doc, getDoc, orderBy, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase/config';
-import { Box, Typography, List, ListItem, ListItemText, Avatar, AppBar, Toolbar, IconButton, Fab, Badge } from '@mui/material';
+import { Box, Typography, List, ListItem, ListItemText, Avatar, IconButton, Badge, InputBase, Menu, MenuItem } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
-import { Logout } from '@mui/icons-material';
+import { Logout, Search, ChatBubbleOutline, MoreVert } from '@mui/icons-material';
+import CircleIcon from '@mui/icons-material/Circle'; // For online status dot
 
 import { ref, onValue } from 'firebase/database';
 import { rtdb } from '../firebase/config';
 
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
-function HomePage() {
+function HomePage({ user: currentUser }) { // Renamed prop to avoid conflict with 'user' in map
+  const [loading, setLoading] = useState(true);
+  
   const [users, setUsers] = useState([]); // all users
   const [currentUserPFP, setCurrentUserPFP] = useState('');
+  const [anchorEl, setAnchorEl] = useState(null);
   const [userStatuses, setUserStatuses] = useState({});
   const [unreadMessages, setUnreadMessages] = useState({});
   const [lastMessages, setLastMessages] = useState({});
+  const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
+
+  // Fetch current user's display name for the sidebar header
+  const [currentUserName, setCurrentUserName] = useState('User Name');
+  useEffect(() => {
+    const fetchCurrentUserName = async () => {
+      if (auth.currentUser) {
+        const userDocRef = doc(db, 'users', auth.currentUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          setCurrentUserName(userDocSnap.data().displayName || 'User Name');
+        }
+      }
+    };
+    fetchCurrentUserName();
+  }, [currentUser]);
 
   useEffect(() => {
     const fetchCurrentUserPFP = async () => {
@@ -39,9 +59,10 @@ function HomePage() {
         usersArray.push({ id: doc.id, ...doc.data() });
       });
       setUsers(usersArray);
+      setLoading(false); // Set loading to false after users are loaded
     });
     return () => unsubscribe();
-  }, []);
+  }, [currentUser]); // Added currentUser to dependency array
 
   useEffect(() => {
     const unsubscribes = [];
@@ -108,9 +129,14 @@ function HomePage() {
     });
   };
 
-  const sortedUsers = [...users].sort((a, b) => {
-    const unreadA = unreadMessages[a.id] || 0;
-    const unreadB = unreadMessages[b.id] || 0;
+  const filteredAndSortedUsers = [...users]
+    .filter(user =>
+      (user.displayName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (lastMessages[user.id]?.text || '').toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      const unreadA = unreadMessages[a.id] || 0;
+      const unreadB = unreadMessages[b.id] || 0;
 
     // Prioritize users with unread messages
     if (unreadA > 0 && unreadB === 0) return -1;
@@ -120,90 +146,104 @@ function HomePage() {
     const lastMsgA = lastMessages[a.id];
     const lastMsgB = lastMessages[b.id];
 
-    if (lastMsgA && lastMsgB) {
+    if (lastMsgA && lastMsgB && lastMsgA.timestamp && lastMsgB.timestamp) {
       return lastMsgB.timestamp.toDate().getTime() - lastMsgA.timestamp.toDate().getTime();
     }
-    if (lastMsgA) return -1; // User A has messages, B doesn't
-    if (lastMsgB) return 1;  // User B has messages, A doesn't
+    if (lastMsgA && lastMsgA.timestamp) return -1; // User A has messages, B doesn't
+    if (lastMsgB && lastMsgB.timestamp) return 1;  // User B has messages, A doesn't
 
     return 0; // No unread messages and no last messages, maintain original order
   });
 
+  if (loading) {
+    return <Typography>Loading...</Typography>; // Simple loading indicator
+  }
+
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static" elevation={0} sx={{ background: 'transparent', color: 'text.primary', boxShadow: 'none' }}>
-        <Toolbar>
-          <Typography variant="h5" component="div" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
-            Chats
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: 'background.default' }}>
+      {/* Sidebar Header */}
+      <Box className="sidebar-header">
+        <Box className="sidebar-header-user-info">
+          <Avatar src={currentUserPFP} sx={{ cursor: 'pointer' }} />
+          <Typography variant="h6" className="sidebar-header-user-name">
+            {currentUserName}
           </Typography>
-          <IconButton color="inherit" onClick={() => navigate('/profile')}>
-            <Avatar src={currentUserPFP} />
+        </Box>
+        <Box className="sidebar-header-icons">
+          <IconButton color="inherit">
+            <CircleIcon sx={{ fontSize: 10, color: 'green' }} /> {/* Online status dot */}
           </IconButton>
-          <IconButton color="inherit" onClick={handleLogout}>
-            <Logout />
+          <IconButton color="inherit">
+            <ChatBubbleOutline />
           </IconButton>
-        </Toolbar>
-      </AppBar>
-      <List sx={{ flexGrow: 1, overflowY: 'auto', px: 2, pt: 1 }}>
-        {sortedUsers.map((user) => (
+          <IconButton color="inherit">
+            <MoreVert onClick={(e) => setAnchorEl(e.currentTarget)} />
+          </IconButton>
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={() => setAnchorEl(null)}
+          >
+            <MenuItem onClick={() => navigate('/profile')}>Settings</MenuItem>
+            <MenuItem onClick={handleLogout}>Logout</MenuItem>
+          </Menu>
+        </Box>
+      </Box>
+
+      {/* Search Bar */}
+      <Box className="search-bar-container">
+        <InputBase
+          className="search-input"
+          placeholder="Search or start new chat"
+          startAdornment={<Search sx={{ color: '#999', mr: 1 }} />}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </Box>
+
+      {/* Chat List */}
+      <List sx={{ flexGrow: 1, overflowY: 'auto', p: 0 }}> {/* Removed horizontal padding */}
+        {filteredAndSortedUsers.map((user) => (
           <ListItem
             button
             key={user.id}
             onClick={() => handleUserClick(user)}
+            className="chat-list-item" // Apply custom class
             sx={{
-              mb: 1.5,
-              borderRadius: 1, // More rectangular
-              boxShadow: 2,
-              bgcolor: 'background.paper',
-              '&:hover': { bgcolor: 'action.hover' },
+              mb: 0, // Remove bottom margin
+              borderRadius: 0, // Remove border radius
+              boxShadow: 'none', // Remove box shadow
+              borderBottom: '1px solid rgba(0, 0, 0, 0.08)', // Subtle separator
+              '&:last-child': { borderBottom: 'none' }, // No border for last item
               py: 1.5,
               px: 2,
             }}
           >
-            <Badge
-              badgeContent={unreadMessages[user.id] || 0}
-              color="error"
-              invisible={unreadMessages[user.id] === 0}
-              sx={{ mr: 2 }}
-            >
-              <Avatar src={user.photoURL} />
-            </Badge>
+            <Avatar src={user.photoURL} className="chat-list-item-avatar" />
             <ListItemText
-              sx={{ minWidth: 0 }}
+              className="chat-list-item-info"
               primary={
-                <Typography variant="subtitle1" sx={{ fontWeight: 'medium', fontFamily: 'Roboto, sans-serif' }}>
-                  {user.displayName}
-                </Typography>
+                <Box className="chat-list-item-header">
+                  <Typography variant="subtitle1" className="chat-list-item-name">
+                    {user.displayName}
+                  </Typography>
+                  <Typography variant="caption" className="chat-list-item-time">
+                    {lastMessages[user.id]?.timestamp ? new Date(lastMessages[user.id].timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                  </Typography>
+                </Box>
               }
               secondary={
-                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Box
-                      sx={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: '50%',
-                        bgcolor: userStatuses[user.id]?.state === 'online' ? 'green' : 'red',
-                        display: 'inline-block',
-                        mr: 1,
-                      }}
-                    />
-                    <Typography
-                      variant="caption"
-                      sx={{ color: 'text.secondary', display: 'inline-block', fontFamily: 'Roboto, sans-serif' }}
-                    >
-                      {userStatuses[user.id]?.state === 'online' ? 'Online' : 'Offline'}
-                    </Typography>
-                  </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
                   <Typography
                     variant="body2"
                     color="text.secondary"
-                    sx={{ mt: 0.5, fontFamily: 'Roboto, sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    className="chat-list-item-message"
+                    sx={{ flexGrow: 1 }}
                   >
                     {lastMessages[user.id] ? (
                       <>
                         <strong>
-                          {lastMessages[user.id].senderId === auth.currentUser.uid ? 'You: ' : `${users.find(u => u.uid === lastMessages[user.id].senderId)?.displayName || 'User'}: `}
+                          {lastMessages[user.id].senderId === auth.currentUser.uid ? 'You: ' : ''}
                         </strong>
                         {lastMessages[user.id].text}
                       </>
@@ -211,18 +251,18 @@ function HomePage() {
                       'No messages yet.'
                     )}
                   </Typography>
+                  {unreadMessages[user.id] > 0 && (
+                    <Box className="chat-list-item-badge">
+                      {unreadMessages[user.id]}
+                    </Box>
+                  )}
                 </Box>
               }
             />
-            <IconButton edge="end" aria-label="view profile" onClick={(e) => handleViewProfile(e, user.id)}>
-              <InfoOutlinedIcon />
-            </IconButton>
           </ListItem>
         ))}
       </List>
-      <Fab color="primary" aria-label="add" sx={{ position: 'fixed', bottom: 24, right: 24 }} onClick={() => navigate('/gemini-chat')}>
-        <Typography variant="h5" sx={{ fontWeight: 'bold', fontFamily: 'Roboto, sans-serif' }}>AI</Typography>
-      </Fab>
+      {/* Removed the FAB button as per new design */}
     </Box>
   );
 }

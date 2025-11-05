@@ -21,13 +21,15 @@ function Profile() {
 
     useEffect(() => {
         const fetchUserData = async () => {
-            if (!currentUser) {
-                navigate('/login');
+            const targetUid = userId || (currentUser && currentUser.uid);
+
+            if (!targetUid) {
+                if (!currentUser) navigate('/login');
+                setLoading(false);
                 return;
             }
 
-            const targetUid = userId || currentUser.uid; // Use userId from URL or current user's UID
-
+            setLoading(true);
             try {
                 const userDoc = await getDoc(doc(db, 'users', targetUid));
                 if (userDoc.exists()) {
@@ -51,6 +53,9 @@ function Profile() {
     }, [userId, currentUser, navigate]);
 
     const isCurrentUserProfile = targetUser && currentUser && targetUser.id === currentUser.uid;
+    console.log('userId:', userId);
+    console.log('currentUser:', currentUser);
+    console.log('targetUser:', targetUser);
 
     const isUsernameUnique = async (name) => {
         if (name === targetUser.displayName) {

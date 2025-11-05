@@ -5,8 +5,8 @@ import { useLongPress } from 'use-long-press';
 import { Done, DoneAll } from '@mui/icons-material';
 
 const MessageItem = ({ msg, user, users, onContextMenu, onReply }) => {
-  const theme = useTheme();
   const [swiped, setSwiped] = useState(false);
+  const theme = useTheme(); // Keep theme for other potential uses if needed
 
   const handlers = useSwipeable({
     onSwipedRight: () => {
@@ -24,48 +24,39 @@ const MessageItem = ({ msg, user, users, onContextMenu, onReply }) => {
 
   return (
     <Box
-      sx={{
-        display: 'flex',
-        justifyContent: msg.senderId === user.uid ? 'flex-end' : 'flex-start',
-        mb: 1.5,
-        transition: 'transform 0.2s ease-in-out',
-        transform: swiped ? 'translateX(20px) rotate(1deg)' : 'translateX(0) rotate(0deg)',
-      }}
+      className={`message-item ${msg.senderId === user.uid ? 'sent' : 'received'}`}
       onContextMenu={(e) => onContextMenu(e, msg)}
       {...handlers}
       {...longPress}
     >
-      <Paper
-        elevation={0}
-        sx={{
-          p: 1.2,
-          px: 2,
-          background: msg.senderId === user.uid ? theme.palette.primary.main : theme.palette.secondary.main,
-          color: theme.palette.primary.contrastText,
-          borderRadius: msg.senderId === user.uid ? '18px 18px 6px 18px' : '18px 18px 18px 6px',
-          maxWidth: '70%',
-          boxShadow: theme.shadows[1],
-          fontSize: 16,
-          fontWeight: 400,
-          transition: 'background 0.2s',
-        }}
+      <Box
+        className={`message-bubble ${msg.senderId === user.uid ? 'sent' : 'received'}`}
       >
         {msg.replyTo && (
-          <Box sx={{ mb: 1, p: 1, borderLeft: `3px solid ${theme.palette.primary.contrastText}`, opacity: 0.8 }}>
+          <Box sx={{ mb: 1, p: 1, borderLeft: `3px solid ${msg.senderId === user.uid ? '#008069' : '#666'}`, opacity: 0.8, borderRadius: '4px', backgroundColor: 'rgba(0, 0, 0, 0.1)' }}>
             <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
               {users.find(u => u.uid === msg.replyTo.senderId)?.displayName || 'User'}
             </Typography>
             <Typography variant="body2" sx={{ fontStyle: 'italic' }}>{msg.replyTo.text}</Typography>
           </Box>
         )}
-        <Typography variant="body1" sx={{ fontWeight: 500, pb: 1 }}>{msg.text}</Typography>
+        {msg.imageUrl ? ( // If imageUrl exists, display the image
+          <img
+            src={msg.imageUrl}
+            alt="Image"
+            style={{ maxWidth: '100%', maxHeight: '200px', cursor: 'pointer' }}
+            onClick={() => window.open(msg.imageUrl, '_blank')} // Open image in new tab
+          />
+        ) : (
+          <Typography variant="body1" className="message-bubble-text">{msg.text}</Typography>
+        )}
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mt: 0.5 }}>
-          <Typography variant="caption" sx={{ color: theme.palette.primary.contrastText, mr: 0.5 }}>
+          <Typography variant="caption" className="message-bubble-time">
             {msg.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Typography>
-          {msg.senderId === user.uid && (msg.read ? <DoneAll fontSize="inherit" sx={{ color: '#4fc3f7' }} /> : <Done fontSize="inherit" />)}
+          {msg.senderId === user.uid && (msg.read ? <DoneAll fontSize="inherit" sx={{ color: '#4fc3f7', ml: 0.5 }} /> : <Done fontSize="inherit" sx={{ color: '#999', ml: 0.5 }} />)}
         </Box>
-      </Paper>
+      </Box>
     </Box>
   );
 };
